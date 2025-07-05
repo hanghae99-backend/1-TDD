@@ -28,4 +28,13 @@ class PointService(
 
         return userPointTable.insertOrUpdate(id, updatedPoint)
     }
+
+    fun useUserPoint(id:Long, amount: Long): UserPoint {
+        val currentPoint =  userPointTable.selectById(id).point
+        val updatedPoint = currentPoint - amount
+
+        pointHistoryTable.insert(id, amount, TransactionType.USE, System.currentTimeMillis())
+
+        return userPointTable.insertOrUpdate(id, updatedPoint)
+    }
 }
