@@ -48,7 +48,7 @@ class PointController (
         @PathVariable id: Long,
         @RequestBody amount: Long,
     ): UserPoint {
-        return UserPoint(0, 0, 0)
+        return pointService.chargeUserPoint(id, amount)
     }
 
     /**
