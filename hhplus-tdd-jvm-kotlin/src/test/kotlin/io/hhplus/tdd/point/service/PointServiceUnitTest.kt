@@ -14,7 +14,7 @@ import org.mockito.Mockito.*
 import org.mockito.junit.jupiter.MockitoExtension
 
 @ExtendWith(MockitoExtension::class)
-class GetUserPointTest {
+class PointServiceUnitTest {
 
     @Mock
     private lateinit var userPointTable: UserPointTable
