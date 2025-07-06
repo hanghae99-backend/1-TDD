@@ -5,6 +5,7 @@ import io.hhplus.tdd.database.UserPointTable
 import io.hhplus.tdd.point.dto.PointHistory
 import io.hhplus.tdd.point.dto.TransactionType
 import io.hhplus.tdd.point.dto.UserPoint
+import io.hhplus.tdd.point.util.PointValidator
 import org.springframework.stereotype.Service
 
 @Service
@@ -12,7 +13,9 @@ class PointService(
     private val userPointTable: UserPointTable,
     private val pointHistoryTable: PointHistoryTable
 ) {
+    
     fun getUserPoint(id: Long): UserPoint {
+        PointValidator.validateUserId(id)
         return userPointTable.selectById(id)
     }
 
