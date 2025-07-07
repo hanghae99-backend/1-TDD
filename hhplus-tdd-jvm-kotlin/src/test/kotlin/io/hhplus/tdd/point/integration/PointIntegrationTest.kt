@@ -43,7 +43,103 @@ class PointIntegrationTest {
     }
 
     /**
-     * 사용자 포인트 히스토리 조회
+     * 포인트 충전 테스트
+     */
+    @Test
+    fun `포인트 충전 성공`() {
+        val userId = Random.nextLong(10000, 99999)
+        val chargeAmount = 1000L
+        
+        val result = pointService.chargeUserPoint(userId, chargeAmount)
+        
+        assertThat(result.id).isEqualTo(userId)
+        assertThat(result.point).isEqualTo(chargeAmount)
+        assertThat(result.updateMillis).isGreaterThan(0L)
+        
+        // 히스토리 확인
+        val histories = pointService.getUserPointHistory(userId)
+        assertThat(histories).hasSize(1)
+        assertThat(histories[0].type).isEqualTo(TransactionType.CHARGE)
+        assertThat(histories[0].amount).isEqualTo(chargeAmount)
+        assertThat(histories[0].userId).isEqualTo(userId)
+    }
+
+    @Test
+    fun `기존 포인트에 충전 성공`() {
+        val userId = Random.nextLong(10000, 99999)
+        val initialAmount = 500L
+        val chargeAmount = 1000L
+        
+        // 초기 포인트 설정
+        userPointTable.insertOrUpdate(userId, initialAmount)
+        
+        val result = pointService.chargeUserPoint(userId, chargeAmount)
+        
+        assertThat(result.id).isEqualTo(userId)
+        assertThat(result.point).isEqualTo(initialAmount + chargeAmount)
+        
+        // 히스토리 확인
+        val histories = pointService.getUserPointHistory(userId)
+        assertThat(histories).hasSize(1)
+        assertThat(histories[0].type).isEqualTo(TransactionType.CHARGE)
+        assertThat(histories[0].amount).isEqualTo(chargeAmount)
+    }
+
+    /**
+     * 포인트 사용 테스트
+     */
+    @Test
+    fun `포인트 사용 성공`() {
+        val userId = Random.nextLong(10000, 99999)
+        val initialAmount = 1500L
+        val useAmount = 500L
+        
+        // 초기 포인트 설정
+        userPointTable.insertOrUpdate(userId, initialAmount)
+        
+        val result = pointService.useUserPoint(userId, useAmount)
+        
+        assertThat(result.id).isEqualTo(userId)
+        assertThat(result.point).isEqualTo(initialAmount - useAmount)
+        assertThat(result.updateMillis).isGreaterThan(0L)
+        
+        // 히스토리 확인
+        val histories = pointService.getUserPointHistory(userId)
+        assertThat(histories).hasSize(1)
+        assertThat(histories[0].type).isEqualTo(TransactionType.USE)
+        assertThat(histories[0].amount).isEqualTo(useAmount)
+        assertThat(histories[0].userId).isEqualTo(userId)
+    }
+
+    @Test
+    fun `포인트 충전 후 사용 시나리오`() {
+        val userId = Random.nextLong(10000, 99999)
+        val chargeAmount = 2000L
+        val useAmount = 800L
+        
+        // 포인트 충전
+        val chargeResult = pointService.chargeUserPoint(userId, chargeAmount)
+        assertThat(chargeResult.point).isEqualTo(chargeAmount)
+        
+        // 포인트 사용
+        val useResult = pointService.useUserPoint(userId, useAmount)
+        assertThat(useResult.point).isEqualTo(chargeAmount - useAmount)
+        
+        // 히스토리 확인
+        val histories = pointService.getUserPointHistory(userId)
+        assertThat(histories).hasSize(2)
+        
+        // 충전 히스토리
+        assertThat(histories[0].type).isEqualTo(TransactionType.CHARGE)
+        assertThat(histories[0].amount).isEqualTo(chargeAmount)
+        
+        // 사용 히스토리
+        assertThat(histories[1].type).isEqualTo(TransactionType.USE)
+        assertThat(histories[1].amount).isEqualTo(useAmount)
+    }
+
+    /**
+     * 사용자 포인트 히스토리 조회 테스트
      */
     @Test
     fun `신규 사용자의 포인트 히스토리 조회 - 빈 리스트 반환`() {

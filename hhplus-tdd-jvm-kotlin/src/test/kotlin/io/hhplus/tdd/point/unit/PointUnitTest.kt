@@ -67,7 +67,160 @@ class PointUnitTest {
     }
 
     /**
-     * 사용자 포인트 히스토리 조회
+     * 포인트 충전 테스트
+     */
+    @Test
+    fun `포인트 충전 성공`() {
+        val userId = 1L
+        val chargeAmount = 1000L
+        val currentUserPoint = UserPoint(id = userId, point = 500L, updateMillis = System.currentTimeMillis())
+        val expectedUserPoint = UserPoint(id = userId, point = 1500L, updateMillis = System.currentTimeMillis())
+        val expectedHistory = PointHistory(id = 1L, userId = userId, type = TransactionType.CHARGE, amount = chargeAmount, timeMillis = System.currentTimeMillis())
+
+        `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
+        `when`(userPointTable.insertOrUpdate(userId, 1500L)).thenReturn(expectedUserPoint)
+        `when`(pointHistoryTable.insert(
+            id = userId,
+            amount = chargeAmount,
+            transactionType = TransactionType.CHARGE,
+            updateMillis = anyLong()
+        )).thenReturn(expectedHistory)
+
+        val result = pointService.chargeUserPoint(userId, chargeAmount)
+
+        assertThat(result.point).isEqualTo(1500L)
+        verify(userPointTable, times(1)).selectById(userId)
+        verify(userPointTable, times(1)).insertOrUpdate(userId, 1500L)
+        verify(pointHistoryTable, times(1)).insert(
+            id = userId,
+            amount = chargeAmount,
+            transactionType = TransactionType.CHARGE,
+            updateMillis = anyLong()
+        )
+    }
+
+    @Test
+    fun `포인트 충전 시 0이하 금액으로 예외 발생`() {
+        val userId = 1L
+        val invalidAmountZero = 0L
+        val invalidAmountNegative = -100L
+
+        // 0원으로 충전 시도
+        assertThatThrownBy { pointService.chargeUserPoint(userId, invalidAmountZero) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("0이하의 금액으로는 충전할 수 없습니다")
+
+        // 음수로 충전 시도
+        assertThatThrownBy { pointService.chargeUserPoint(userId, invalidAmountNegative) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("0이하의 금액으로는 충전할 수 없습니다")
+
+        verify(userPointTable, never()).selectById(anyLong())
+        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
+        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+    }
+
+    @Test
+    fun `포인트 충전 시 음수 사용자 ID로 예외 발생`() {
+        val invalidUserId = -1L
+        val chargeAmount = 1000L
+
+        assertThatThrownBy { pointService.chargeUserPoint(invalidUserId, chargeAmount) }
+            .isInstanceOf(InvalidUserIdException::class.java)
+            .hasMessageContaining("유효하지 않은 사용자 ID입니다: $invalidUserId")
+
+        verify(userPointTable, never()).selectById(anyLong())
+        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
+        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+    }
+
+    /**
+     * 포인트 사용 테스트
+     */
+    @Test
+    fun `포인트 사용 성공`() {
+        val userId = 1L
+        val useAmount = 300L
+        val currentUserPoint = UserPoint(id = userId, point = 1000L, updateMillis = System.currentTimeMillis())
+        val expectedUserPoint = UserPoint(id = userId, point = 700L, updateMillis = System.currentTimeMillis())
+        val expectedHistory = PointHistory(id = 1L, userId = userId, type = TransactionType.USE, amount = useAmount, timeMillis = System.currentTimeMillis())
+
+        `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
+        `when`(userPointTable.insertOrUpdate(userId, 700L)).thenReturn(expectedUserPoint)
+        `when`(pointHistoryTable.insert(
+            id = userId,
+            amount = useAmount,
+            transactionType = TransactionType.USE,
+            updateMillis = anyLong()
+        )).thenReturn(expectedHistory)
+
+        val result = pointService.useUserPoint(userId, useAmount)
+
+        assertThat(result.point).isEqualTo(700L)
+        verify(userPointTable, times(1)).selectById(userId)
+        verify(userPointTable, times(1)).insertOrUpdate(userId, 700L)
+        verify(pointHistoryTable, times(1)).insert(
+            id = userId,
+            amount = useAmount,
+            transactionType = TransactionType.USE,
+            updateMillis = anyLong()
+        )
+    }
+
+    @Test
+    fun `포인트 사용 시 잔액 부족으로 예외 발생`() {
+        val userId = 1L
+        val useAmount = 1500L
+        val currentUserPoint = UserPoint(id = userId, point = 1000L, updateMillis = System.currentTimeMillis())
+
+        `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
+
+        assertThatThrownBy { pointService.useUserPoint(userId, useAmount) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("잔액이 부족합니다")
+
+        verify(userPointTable, times(1)).selectById(userId)
+        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
+        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+    }
+
+    @Test
+    fun `포인트 사용 시 0이하 금액으로 예외 발생`() {
+        val userId = 1L
+        val invalidAmountZero = 0L
+        val invalidAmountNegative = -100L
+
+        // 0원으로 사용 시도
+        assertThatThrownBy { pointService.useUserPoint(userId, invalidAmountZero) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("0이하의 금액으로는 사용할 수 없습니다")
+
+        // 음수로 사용 시도
+        assertThatThrownBy { pointService.useUserPoint(userId, invalidAmountNegative) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("0이하의 금액으로는 사용할 수 없습니다")
+
+        verify(userPointTable, never()).selectById(anyLong())
+        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
+        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+    }
+
+    @Test
+    fun `포인트 사용 시 음수 사용자 ID로 예외 발생`() {
+        val invalidUserId = -1L
+        val useAmount = 500L
+
+        assertThatThrownBy { pointService.useUserPoint(invalidUserId, useAmount) }
+            .isInstanceOf(InvalidUserIdException::class.java)
+            .hasMessageContaining("유효하지 않은 사용자 ID입니다: $invalidUserId")
+
+        verify(userPointTable, never()).selectById(anyLong())
+        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
+        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+    }
+
+    /**
+     * 사용자 포인트 히스토리 조회 테스트
      */
     @Test
     fun `사용자 포인트 히스토리 조회 성공 - 빈 리스트`() {

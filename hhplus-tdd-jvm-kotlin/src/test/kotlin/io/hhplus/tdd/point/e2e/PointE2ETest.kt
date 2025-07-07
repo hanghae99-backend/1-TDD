@@ -45,6 +45,127 @@ class PointE2ETest {
     }
 
     /**
+     * 포인트 충전 API 테스트
+     */
+    @Test
+    fun `포인트 충전 API 성공`() {
+        val userId = Random.nextLong(10000, 99999)
+        val chargeAmount = 1000L
+
+        // 포인트 충전
+        mockMvc.perform(
+            patch("/point/{id}/charge", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(chargeAmount))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.point").value(chargeAmount))
+            .andExpect(jsonPath("$.updateMillis").isNumber)
+
+        // 충전 후 포인트 조회
+        mockMvc.perform(get("/point/{id}", userId))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.point").value(chargeAmount))
+    }
+
+    @Test
+    fun `포인트 충전 시 0이하 금액으로 에러 발생`() {
+        val userId = Random.nextLong(10000, 99999)
+        val invalidAmountZero = 0L
+        val invalidAmountNegative = -1000L
+
+        // 0원으로 충전 시도
+        mockMvc.perform(
+            patch("/point/{id}/charge", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidAmountZero))
+        )
+            .andExpect(status().isBadRequest)
+
+        // 음수로 충전 시도
+        mockMvc.perform(
+            patch("/point/{id}/charge", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidAmountNegative))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    /**
+     * 포인트 사용 API 테스트
+     */
+    @Test
+    fun `포인트 사용 API 성공`() {
+        val userId = Random.nextLong(10000, 99999)
+        val chargeAmount = 2000L
+        val useAmount = 800L
+
+        // 먼저 포인트 충전
+        mockMvc.perform(
+            patch("/point/{id}/charge", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(chargeAmount))
+        )
+            .andExpect(status().isOk)
+
+        // 포인트 사용
+        mockMvc.perform(
+            patch("/point/{id}/use", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(useAmount))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.point").value(chargeAmount - useAmount))
+            .andExpect(jsonPath("$.updateMillis").isNumber)
+
+        // 사용 후 포인트 조회
+        mockMvc.perform(get("/point/{id}", userId))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.point").value(chargeAmount - useAmount))
+    }
+
+    @Test
+    fun `포인트 사용 시 잔액 부족으로 에러 발생`() {
+        val userId = Random.nextLong(10000, 99999)
+        val useAmount = 1000L
+
+        // 포인트 충전 없이 사용 시도
+        mockMvc.perform(
+            patch("/point/{id}/use", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(useAmount))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `포인트 사용 시 0이하 금액으로 에러 발생`() {
+        val userId = Random.nextLong(10000, 99999)
+        val invalidAmountZero = 0L
+        val invalidAmountNegative = -500L
+
+        // 0원으로 사용 시도
+        mockMvc.perform(
+            patch("/point/{id}/use", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidAmountZero))
+        )
+            .andExpect(status().isBadRequest)
+
+        // 음수로 사용 시도
+        mockMvc.perform(
+            patch("/point/{id}/use", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidAmountNegative))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    /**
      * 포인트 충전 및 히스토리 테스트
      */
     @Test
