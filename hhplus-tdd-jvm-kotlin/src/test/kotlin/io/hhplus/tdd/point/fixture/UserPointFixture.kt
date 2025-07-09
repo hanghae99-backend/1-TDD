@@ -13,8 +13,4 @@ object UserPointFixture {
     }
     
     fun createEmpty(id: Long = 1L): UserPoint = create(id = id, point = 0L)
-    
-    fun createWithSufficientPoint(id: Long = 1L): UserPoint = create(id = id, point = 10000L)
-    
-    fun createWithInsufficientPoint(id: Long = 1L): UserPoint = create(id = id, point = 100L)
 }

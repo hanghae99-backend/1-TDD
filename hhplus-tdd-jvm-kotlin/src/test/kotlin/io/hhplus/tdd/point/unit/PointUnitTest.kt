@@ -13,6 +13,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.params.provider.CsvSource
 import io.mockk.*
 
 class PointUnitTest {
@@ -59,12 +62,13 @@ class PointUnitTest {
         verify(exactly = 1) { userPointTable.selectById(999L) }
     }
 
-    @Test
-    fun `음수 사용자 ID로 조회 시 InvalidUserIdException 발생`() {
+    @ParameterizedTest
+    @ValueSource(longs = [-1L, -10L, -100L, -999L])
+    fun `음수 사용자 ID로 조회 시 InvalidUserIdException 발생`(invalidUserId: Long) {
         // when & then
-        assertThatThrownBy { pointService.getUserPoint(-1L) }
+        assertThatThrownBy { pointService.getUserPoint(invalidUserId) }
             .isInstanceOf(InvalidUserIdException::class.java)
-            .hasMessageContaining("유효하지 않은 사용자 ID입니다: -1")
+            .hasMessageContaining("유효하지 않은 사용자 ID입니다: $invalidUserId")
         
         verify(exactly = 0) { userPointTable.selectById(any()) }
     }
@@ -72,17 +76,22 @@ class PointUnitTest {
     /**
      * 포인트 충전 테스트
      */
-    @Test
-    fun `포인트 충전 성공`() {
+    @ParameterizedTest
+    @CsvSource(
+        "500, 1000, 1500",   // 초기포인트, 충전금액, 예상결과
+        "0, 1000, 1000",
+        "1000, 500, 1500",
+        "100, 2000, 2100"
+    )
+    fun `포인트 충전 성공`(initialPoint: Long, chargeAmount: Long, expectedFinal: Long) {
         // given
         val userId = 1L
-        val chargeAmount = 1000L
-        val currentUserPoint = UserPointFixture.create(id = userId, point = 500L)
-        val expectedUserPoint = UserPointFixture.create(id = userId, point = 1500L)
+        val currentUserPoint = UserPointFixture.create(id = userId, point = initialPoint)
+        val expectedUserPoint = UserPointFixture.create(id = userId, point = expectedFinal)
         val expectedHistory = PointHistoryFixture.createCharge(userId = userId, amount = chargeAmount)
 
         every { userPointTable.selectById(userId) } returns currentUserPoint
-        every { userPointTable.insertOrUpdate(userId, 1500L) } returns expectedUserPoint
+        every { userPointTable.insertOrUpdate(userId, expectedFinal) } returns expectedUserPoint
         every { pointHistoryTable.insert(
             id = userId,
             amount = chargeAmount,
@@ -94,9 +103,9 @@ class PointUnitTest {
         val result = pointService.chargeUserPoint(userId, chargeAmount)
 
         // then
-        assertThat(result.point).isEqualTo(1500L)
+        assertThat(result.point).isEqualTo(expectedFinal)
         verify(exactly = 1) { userPointTable.selectById(userId) }
-        verify(exactly = 1) { userPointTable.insertOrUpdate(userId, 1500L) }
+        verify(exactly = 1) { userPointTable.insertOrUpdate(userId, expectedFinal) }
         verify(exactly = 1) { pointHistoryTable.insert(
             id = userId,
             amount = chargeAmount,
@@ -105,28 +114,13 @@ class PointUnitTest {
         ) }
     }
 
-    @Test
-    fun `포인트 충전 시 0이하 금액으로 예외 발생`() {
+    @ParameterizedTest
+    @ValueSource(longs = [0L, -1L, -100L, -1000L])
+    fun `포인트 충전 시 유효하지 않은 금액으로 예외 발생`(invalidAmount: Long) {
         // when & then
-        assertThatThrownBy { pointService.chargeUserPoint(1L, 0L) }
+        assertThatThrownBy { pointService.chargeUserPoint(1L, invalidAmount) }
             .isInstanceOf(InvalidAmountException::class.java)
             .hasMessageContaining("최소 충전 금액(0)보다 작은 금액이 유효하지 않습니다")
-
-        assertThatThrownBy { pointService.chargeUserPoint(1L, -100L) }
-            .isInstanceOf(InvalidAmountException::class.java)
-            .hasMessageContaining("최소 충전 금액(0)보다 작은 금액이 유효하지 않습니다")
-
-        verify(exactly = 0) { userPointTable.selectById(any()) }
-        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
-        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.CHARGE, any()) }
-    }
-
-    @Test
-    fun `포인트 충전 시 음수 사용자 ID로 예외 발생`() {
-        // when & then
-        assertThatThrownBy { pointService.chargeUserPoint(-1L, 1000L) }
-            .isInstanceOf(InvalidUserIdException::class.java)
-            .hasMessageContaining("유효하지 않은 사용자 ID입니다: -1")
 
         verify(exactly = 0) { userPointTable.selectById(any()) }
         verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
@@ -136,17 +130,22 @@ class PointUnitTest {
     /**
      * 포인트 사용 테스트
      */
-    @Test
-    fun `포인트 사용 성공`() {
+    @ParameterizedTest
+    @CsvSource(
+        "10000, 300, 9700",
+        "1000, 500, 500", 
+        "2000, 100, 1900",
+        "5000, 5000, 0"  // 전액 사용
+    )
+    fun `포인트 사용 성공`(initialPoint: Long, useAmount: Long, expectedFinal: Long) {
         // given
         val userId = 1L
-        val useAmount = 300L
-        val currentUserPoint = UserPointFixture.createWithSufficientPoint(id = userId)
-        val expectedUserPoint = UserPointFixture.create(id = userId, point = 9700L)
+        val currentUserPoint = UserPointFixture.create(id = userId, point = initialPoint)
+        val expectedUserPoint = UserPointFixture.create(id = userId, point = expectedFinal)
         val expectedHistory = PointHistoryFixture.createUse(userId = userId, amount = useAmount)
 
         every { userPointTable.selectById(userId) } returns currentUserPoint
-        every { userPointTable.insertOrUpdate(userId, 9700L) } returns expectedUserPoint
+        every { userPointTable.insertOrUpdate(userId, expectedFinal) } returns expectedUserPoint
         every { pointHistoryTable.insert(
             id = userId,
             amount = useAmount,
@@ -158,9 +157,9 @@ class PointUnitTest {
         val result = pointService.useUserPoint(userId, useAmount)
 
         // then
-        assertThat(result.point).isEqualTo(9700L)
+        assertThat(result.point).isEqualTo(expectedFinal)
         verify(exactly = 1) { userPointTable.selectById(userId) }
-        verify(exactly = 1) { userPointTable.insertOrUpdate(userId, 9700L) }
+        verify(exactly = 1) { userPointTable.insertOrUpdate(userId, expectedFinal) }
         verify(exactly = 1) { pointHistoryTable.insert(
             id = userId,
             amount = useAmount,
@@ -169,47 +168,37 @@ class PointUnitTest {
         ) }
     }
 
-    @Test
-    fun `포인트 사용 시 잔액 부족으로 예외 발생`() {
+    @ParameterizedTest
+    @CsvSource(
+        "100, 1500",  // 현재포인트, 사용요청금액
+        "500, 1000",
+        "0, 100",
+        "1000, 2000"
+    )
+    fun `포인트 사용 시 잔액 부족으로 예외 발생`(currentPoint: Long, useAmount: Long) {
         // given
         val userId = 1L
-        val useAmount = 1500L
-        val currentUserPoint = UserPointFixture.createWithInsufficientPoint(id = userId)
+        val currentUserPoint = UserPointFixture.create(id = userId, point = currentPoint)
 
         every { userPointTable.selectById(userId) } returns currentUserPoint
 
         // when & then
         assertThatThrownBy { pointService.useUserPoint(userId, useAmount) }
             .isInstanceOf(InsufficientPointException::class.java)
-            .hasMessageContaining("잔액이 부족합니다. 현재 포인트: 100, 사용 요청: 1500")
+            .hasMessageContaining("잔액이 부족합니다. 현재 포인트: $currentPoint, 사용 요청: $useAmount")
 
         verify(exactly = 1) { userPointTable.selectById(userId) }
         verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
         verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.USE, any()) }
     }
 
-    @Test
-    fun `포인트 사용 시 0이하 금액으로 예외 발생`() {
+    @ParameterizedTest
+    @ValueSource(longs = [0L, -1L, -100L, -500L])
+    fun `포인트 사용 시 유효하지 않은 금액으로 예외 발생`(invalidAmount: Long) {
         // when & then
-        assertThatThrownBy { pointService.useUserPoint(1L, 0L) }
+        assertThatThrownBy { pointService.useUserPoint(1L, invalidAmount) }
             .isInstanceOf(InvalidAmountException::class.java)
             .hasMessageContaining("최소 사용 금액(0)보다 작은 금액이 유효하지 않습니다")
-
-        assertThatThrownBy { pointService.useUserPoint(1L, -100L) }
-            .isInstanceOf(InvalidAmountException::class.java)
-            .hasMessageContaining("최소 사용 금액(0)보다 작은 금액이 유효하지 않습니다")
-
-        verify(exactly = 0) { userPointTable.selectById(any()) }
-        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
-        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.USE, any()) }
-    }
-
-    @Test
-    fun `포인트 사용 시 음수 사용자 ID로 예외 발생`() {
-        // when & then
-        assertThatThrownBy { pointService.useUserPoint(-1L, 500L) }
-            .isInstanceOf(InvalidUserIdException::class.java)
-            .hasMessageContaining("유효하지 않은 사용자 ID입니다: -1")
 
         verify(exactly = 0) { userPointTable.selectById(any()) }
         verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
