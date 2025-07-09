@@ -54,7 +54,7 @@ class PointE2ETest {
 
         // 포인트 충전
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chargeAmount))
         )
@@ -78,7 +78,7 @@ class PointE2ETest {
 
         // 0원으로 충전 시도
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidAmountZero))
         )
@@ -86,7 +86,7 @@ class PointE2ETest {
 
         // 음수로 충전 시도
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidAmountNegative))
         )
@@ -104,7 +104,7 @@ class PointE2ETest {
 
         // 먼저 포인트 충전
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chargeAmount))
         )
@@ -112,7 +112,7 @@ class PointE2ETest {
 
         // 포인트 사용
         mockMvc.perform(
-            patch("/point/{id}/use", userId)
+            post("/point/{id}/use", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(useAmount))
         )
@@ -135,7 +135,7 @@ class PointE2ETest {
 
         // 포인트 충전 없이 사용 시도
         mockMvc.perform(
-            patch("/point/{id}/use", userId)
+            post("/point/{id}/use", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(useAmount))
         )
@@ -150,7 +150,7 @@ class PointE2ETest {
 
         // 0원으로 사용 시도
         mockMvc.perform(
-            patch("/point/{id}/use", userId)
+            post("/point/{id}/use", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidAmountZero))
         )
@@ -158,7 +158,7 @@ class PointE2ETest {
 
         // 음수로 사용 시도
         mockMvc.perform(
-            patch("/point/{id}/use", userId)
+            post("/point/{id}/use", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidAmountNegative))
         )
@@ -175,7 +175,7 @@ class PointE2ETest {
 
         // 포인트 충전
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chargeAmount))
         )
@@ -204,7 +204,7 @@ class PointE2ETest {
 
         // 포인트 충전 (2회)
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chargeAmount1))
         )
@@ -212,7 +212,7 @@ class PointE2ETest {
             .andExpect(jsonPath("$.point").value(chargeAmount1))
 
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chargeAmount2))
         )
@@ -221,7 +221,7 @@ class PointE2ETest {
 
         // 포인트 사용
         mockMvc.perform(
-            patch("/point/{id}/use", userId)
+            post("/point/{id}/use", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(useAmount))
         )
@@ -260,7 +260,7 @@ class PointE2ETest {
 
         // 사용자1 포인트 충전
         mockMvc.perform(
-            patch("/point/{id}/charge", userId1)
+            post("/point/{id}/charge", userId1)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(amount1))
         )
@@ -268,7 +268,7 @@ class PointE2ETest {
 
         // 사용자2 포인트 충전
         mockMvc.perform(
-            patch("/point/{id}/charge", userId2)
+            post("/point/{id}/charge", userId2)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(amount2))
         )
@@ -319,7 +319,7 @@ class PointE2ETest {
 
         // 포인트 충전
         mockMvc.perform(
-            patch("/point/{id}/charge", userId)
+            post("/point/{id}/charge", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chargeAmount))
         )
@@ -327,7 +327,7 @@ class PointE2ETest {
 
         // 포인트 사용
         mockMvc.perform(
-            patch("/point/{id}/use", userId)
+            post("/point/{id}/use", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(useAmount))
         )

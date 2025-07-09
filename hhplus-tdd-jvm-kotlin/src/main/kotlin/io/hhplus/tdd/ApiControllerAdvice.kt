@@ -22,6 +22,24 @@ class ApiControllerAdvice : ResponseEntityExceptionHandler() {
             HttpStatus.BAD_REQUEST,
         )
     }
+
+    @ExceptionHandler(InvalidAmountException::class)
+    fun handleInvalidAmountException(e: InvalidAmountException): ResponseEntity<ErrorResponse> {
+        logger.warn("Invalid amount: ${e.message}")
+        return ResponseEntity(
+            ErrorResponse("INVALID_AMOUNT", e.message ?: "유효하지 않은 금액입니다."),
+            HttpStatus.BAD_REQUEST,
+        )
+    }
+
+    @ExceptionHandler(InsufficientPointException::class)
+    fun handleInsufficientPointException(e: InsufficientPointException): ResponseEntity<ErrorResponse> {
+        logger.warn("Insufficient point: ${e.message}")
+        return ResponseEntity(
+            ErrorResponse("INSUFFICIENT_POINT", e.message ?: "잔액이 부족합니다."),
+            HttpStatus.BAD_REQUEST,
+        )
+    }
     
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ErrorResponse> {

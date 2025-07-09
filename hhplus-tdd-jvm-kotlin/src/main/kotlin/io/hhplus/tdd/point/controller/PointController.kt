@@ -6,7 +6,7 @@ import io.hhplus.tdd.point.service.PointService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -43,7 +43,7 @@ class PointController (
     /**
      * TODO - 특정 유저의 포인트를 충전하는 기능을 작성해주세요.
      */
-    @PatchMapping("{id}/charge")
+    @PostMapping("{id}/charge")
     fun charge(
         @PathVariable id: Long,
         @RequestBody amount: Long,
@@ -54,7 +54,7 @@ class PointController (
     /**
      * TODO - 특정 유저의 포인트를 사용하는 기능을 작성해주세요.
      */
-    @PatchMapping("{id}/use")
+    @PostMapping("{id}/use")
     fun use(
         @PathVariable id: Long,
         @RequestBody amount: Long,

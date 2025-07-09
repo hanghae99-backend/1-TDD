@@ -23,8 +23,11 @@ class PointService(
         return pointHistoryTable.selectAllByUserId(id)
     }
 
-    fun chargeUserPoint(id:Long, amount: Long): UserPoint {
-        val currentPoint =  userPointTable.selectById(id).point
+    fun chargeUserPoint(id: Long, amount: Long): UserPoint {
+        PointValidator.validateUserId(id)
+        PointValidator.validateChargeAmount(amount)
+        
+        val currentPoint = userPointTable.selectById(id).point
         val updatedPoint = currentPoint + amount
 
         pointHistoryTable.insert(id, amount, TransactionType.CHARGE, System.currentTimeMillis())
@@ -32,8 +35,13 @@ class PointService(
         return userPointTable.insertOrUpdate(id, updatedPoint)
     }
 
-    fun useUserPoint(id:Long, amount: Long): UserPoint {
-        val currentPoint =  userPointTable.selectById(id).point
+    fun useUserPoint(id: Long, amount: Long): UserPoint {
+        PointValidator.validateUserId(id)
+        PointValidator.validateUseAmount(amount)
+        
+        val currentPoint = userPointTable.selectById(id).point
+        PointValidator.validateSufficientPoint(currentPoint, amount)
+        
         val updatedPoint = currentPoint - amount
 
         pointHistoryTable.insert(id, amount, TransactionType.USE, System.currentTimeMillis())

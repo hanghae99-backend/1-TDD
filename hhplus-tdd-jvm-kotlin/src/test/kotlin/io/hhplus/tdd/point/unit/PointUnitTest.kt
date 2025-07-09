@@ -1,6 +1,8 @@
 package io.hhplus.tdd.point.unit
 
 import io.hhplus.tdd.InvalidUserIdException
+import io.hhplus.tdd.InsufficientPointException
+import io.hhplus.tdd.InvalidAmountException
 import io.hhplus.tdd.database.PointHistoryTable
 import io.hhplus.tdd.database.UserPointTable
 import io.hhplus.tdd.point.dto.PointHistory
@@ -107,13 +109,13 @@ class PointUnitTest {
 
         // 0원으로 충전 시도
         assertThatThrownBy { pointService.chargeUserPoint(userId, invalidAmountZero) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("0이하의 금액으로는 충전할 수 없습니다")
+            .isInstanceOf(InvalidAmountException::class.java)
+            .hasMessageContaining("최소 충전 금액(0)보다 작은 금액이 유효하지 않습니다")
 
         // 음수로 충전 시도
         assertThatThrownBy { pointService.chargeUserPoint(userId, invalidAmountNegative) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("0이하의 금액으로는 충전할 수 없습니다")
+            .isInstanceOf(InvalidAmountException::class.java)
+            .hasMessageContaining("최소 충전 금액(0)보다 작은 금액이 유효하지 않습니다")
 
         verify(userPointTable, never()).selectById(anyLong())
         verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
@@ -176,8 +178,8 @@ class PointUnitTest {
         `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
 
         assertThatThrownBy { pointService.useUserPoint(userId, useAmount) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("잔액이 부족합니다")
+            .isInstanceOf(InsufficientPointException::class.java)
+            .hasMessageContaining("잔액이 부족합니다. 현재 포인트: 1000, 사용 요청: 1500")
 
         verify(userPointTable, times(1)).selectById(userId)
         verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
@@ -192,13 +194,13 @@ class PointUnitTest {
 
         // 0원으로 사용 시도
         assertThatThrownBy { pointService.useUserPoint(userId, invalidAmountZero) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("0이하의 금액으로는 사용할 수 없습니다")
+            .isInstanceOf(InvalidAmountException::class.java)
+            .hasMessageContaining("최소 사용 금액(0)보다 작은 금액이 유효하지 않습니다")
 
         // 음수로 사용 시도
         assertThatThrownBy { pointService.useUserPoint(userId, invalidAmountNegative) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("0이하의 금액으로는 사용할 수 없습니다")
+            .isInstanceOf(InvalidAmountException::class.java)
+            .hasMessageContaining("최소 사용 금액(0)보다 작은 금액이 유효하지 않습니다")
 
         verify(userPointTable, never()).selectById(anyLong())
         verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
