@@ -12,23 +12,19 @@ import io.hhplus.tdd.point.service.PointService
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.InjectMocks
-import org.mockito.Mock
-import org.mockito.Mockito.*
-import org.mockito.junit.jupiter.MockitoExtension
+import org.junit.jupiter.api.BeforeEach
+import io.mockk.*
 
-@ExtendWith(MockitoExtension::class)
 class PointUnitTest {
 
-    @Mock
-    private lateinit var userPointTable: UserPointTable
+    private val userPointTable = mockk<UserPointTable>()
+    private val pointHistoryTable = mockk<PointHistoryTable>()
+    private val pointService = PointService(userPointTable, pointHistoryTable)
 
-    @Mock
-    private lateinit var pointHistoryTable: PointHistoryTable
-
-    @InjectMocks
-    private lateinit var pointService: PointService
+    @BeforeEach
+    fun setUp() {
+        clearAllMocks()
+    }
 
     /**
      * 사용자 포인트 조회
@@ -37,24 +33,24 @@ class PointUnitTest {
     fun `존재하는 사용자의 포인트 조회 성공`() {
         val expectedUserPoint = UserPoint(id = 1L, point = 1000L, updateMillis = 1234567890L)
 
-        `when`(userPointTable.selectById(1L)).thenReturn(expectedUserPoint)
+        every { userPointTable.selectById(1L) } returns expectedUserPoint
 
         val result = pointService.getUserPoint(1L)
 
         assertThat(result).isEqualTo(expectedUserPoint)
-        verify(userPointTable, times(1)).selectById(1L)
+        verify(exactly = 1) { userPointTable.selectById(1L) }
     }
 
     @Test
     fun `존재하지 않는 사용자 조회 시 0포인트로 자동 생성`() {
         val expectedUserPoint = UserPoint(id = 999L, point = 0L, updateMillis = 1234567890L)
 
-        `when`(userPointTable.selectById(999L)).thenReturn(expectedUserPoint)
+        every { userPointTable.selectById(999L) } returns expectedUserPoint
 
         val result = pointService.getUserPoint(999L)
 
         assertThat(result).isEqualTo(expectedUserPoint)
-        verify(userPointTable, times(1)).selectById(999L)
+        verify(exactly = 1) { userPointTable.selectById(999L) }
     }
 
     @Test
@@ -65,7 +61,7 @@ class PointUnitTest {
             .isInstanceOf(InvalidUserIdException::class.java)
             .hasMessageContaining("유효하지 않은 사용자 ID입니다: $invalidUserId")
         
-        verify(userPointTable, never()).selectById(anyLong())
+        verify(exactly = 0) { userPointTable.selectById(any()) }
     }
 
     /**
@@ -79,26 +75,26 @@ class PointUnitTest {
         val expectedUserPoint = UserPoint(id = userId, point = 1500L, updateMillis = System.currentTimeMillis())
         val expectedHistory = PointHistory(id = 1L, userId = userId, type = TransactionType.CHARGE, amount = chargeAmount, timeMillis = System.currentTimeMillis())
 
-        `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
-        `when`(userPointTable.insertOrUpdate(userId, 1500L)).thenReturn(expectedUserPoint)
-        `when`(pointHistoryTable.insert(
+        every { userPointTable.selectById(userId) } returns currentUserPoint
+        every { userPointTable.insertOrUpdate(userId, 1500L) } returns expectedUserPoint
+        every { pointHistoryTable.insert(
             id = userId,
             amount = chargeAmount,
             transactionType = TransactionType.CHARGE,
-            updateMillis = anyLong()
-        )).thenReturn(expectedHistory)
+            updateMillis = any()
+        ) } returns expectedHistory
 
         val result = pointService.chargeUserPoint(userId, chargeAmount)
 
         assertThat(result.point).isEqualTo(1500L)
-        verify(userPointTable, times(1)).selectById(userId)
-        verify(userPointTable, times(1)).insertOrUpdate(userId, 1500L)
-        verify(pointHistoryTable, times(1)).insert(
+        verify(exactly = 1) { userPointTable.selectById(userId) }
+        verify(exactly = 1) { userPointTable.insertOrUpdate(userId, 1500L) }
+        verify(exactly = 1) { pointHistoryTable.insert(
             id = userId,
             amount = chargeAmount,
             transactionType = TransactionType.CHARGE,
-            updateMillis = anyLong()
-        )
+            updateMillis = any()
+        ) }
     }
 
     @Test
@@ -117,9 +113,9 @@ class PointUnitTest {
             .isInstanceOf(InvalidAmountException::class.java)
             .hasMessageContaining("최소 충전 금액(0)보다 작은 금액이 유효하지 않습니다")
 
-        verify(userPointTable, never()).selectById(anyLong())
-        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
-        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+        verify(exactly = 0) { userPointTable.selectById(any()) }
+        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
+        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.CHARGE, any()) }
     }
 
     @Test
@@ -131,9 +127,9 @@ class PointUnitTest {
             .isInstanceOf(InvalidUserIdException::class.java)
             .hasMessageContaining("유효하지 않은 사용자 ID입니다: $invalidUserId")
 
-        verify(userPointTable, never()).selectById(anyLong())
-        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
-        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+        verify(exactly = 0) { userPointTable.selectById(any()) }
+        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
+        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.CHARGE, any()) }
     }
 
     /**
@@ -147,26 +143,26 @@ class PointUnitTest {
         val expectedUserPoint = UserPoint(id = userId, point = 700L, updateMillis = System.currentTimeMillis())
         val expectedHistory = PointHistory(id = 1L, userId = userId, type = TransactionType.USE, amount = useAmount, timeMillis = System.currentTimeMillis())
 
-        `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
-        `when`(userPointTable.insertOrUpdate(userId, 700L)).thenReturn(expectedUserPoint)
-        `when`(pointHistoryTable.insert(
+        every { userPointTable.selectById(userId) } returns currentUserPoint
+        every { userPointTable.insertOrUpdate(userId, 700L) } returns expectedUserPoint
+        every { pointHistoryTable.insert(
             id = userId,
             amount = useAmount,
             transactionType = TransactionType.USE,
-            updateMillis = anyLong()
-        )).thenReturn(expectedHistory)
+            updateMillis = any()
+        ) } returns expectedHistory
 
         val result = pointService.useUserPoint(userId, useAmount)
 
         assertThat(result.point).isEqualTo(700L)
-        verify(userPointTable, times(1)).selectById(userId)
-        verify(userPointTable, times(1)).insertOrUpdate(userId, 700L)
-        verify(pointHistoryTable, times(1)).insert(
+        verify(exactly = 1) { userPointTable.selectById(userId) }
+        verify(exactly = 1) { userPointTable.insertOrUpdate(userId, 700L) }
+        verify(exactly = 1) { pointHistoryTable.insert(
             id = userId,
             amount = useAmount,
             transactionType = TransactionType.USE,
-            updateMillis = anyLong()
-        )
+            updateMillis = any()
+        ) }
     }
 
     @Test
@@ -175,15 +171,15 @@ class PointUnitTest {
         val useAmount = 1500L
         val currentUserPoint = UserPoint(id = userId, point = 1000L, updateMillis = System.currentTimeMillis())
 
-        `when`(userPointTable.selectById(userId)).thenReturn(currentUserPoint)
+        every { userPointTable.selectById(userId) } returns currentUserPoint
 
         assertThatThrownBy { pointService.useUserPoint(userId, useAmount) }
             .isInstanceOf(InsufficientPointException::class.java)
             .hasMessageContaining("잔액이 부족합니다. 현재 포인트: 1000, 사용 요청: 1500")
 
-        verify(userPointTable, times(1)).selectById(userId)
-        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
-        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+        verify(exactly = 1) { userPointTable.selectById(userId) }
+        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
+        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.USE, any()) }
     }
 
     @Test
@@ -202,9 +198,9 @@ class PointUnitTest {
             .isInstanceOf(InvalidAmountException::class.java)
             .hasMessageContaining("최소 사용 금액(0)보다 작은 금액이 유효하지 않습니다")
 
-        verify(userPointTable, never()).selectById(anyLong())
-        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
-        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+        verify(exactly = 0) { userPointTable.selectById(any()) }
+        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
+        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.USE, any()) }
     }
 
     @Test
@@ -216,9 +212,9 @@ class PointUnitTest {
             .isInstanceOf(InvalidUserIdException::class.java)
             .hasMessageContaining("유효하지 않은 사용자 ID입니다: $invalidUserId")
 
-        verify(userPointTable, never()).selectById(anyLong())
-        verify(userPointTable, never()).insertOrUpdate(anyLong(), anyLong())
-        verify(pointHistoryTable, never()).insert(anyLong(), anyLong(), any(), anyLong())
+        verify(exactly = 0) { userPointTable.selectById(any()) }
+        verify(exactly = 0) { userPointTable.insertOrUpdate(any(), any()) }
+        verify(exactly = 0) { pointHistoryTable.insert(any(), any(), TransactionType.USE, any()) }
     }
 
     /**
@@ -229,12 +225,12 @@ class PointUnitTest {
         val userId = 1L
         val expectedHistories = emptyList<PointHistory>()
 
-        `when`(pointHistoryTable.selectAllByUserId(userId)).thenReturn(expectedHistories)
+        every { pointHistoryTable.selectAllByUserId(userId) } returns expectedHistories
 
         val result = pointService.getUserPointHistory(userId)
 
         assertThat(result).isEmpty()
-        verify(pointHistoryTable, times(1)).selectAllByUserId(userId)
+        verify(exactly = 1) { pointHistoryTable.selectAllByUserId(userId) }
     }
 
     @Test
@@ -246,7 +242,7 @@ class PointUnitTest {
             PointHistory(id = 3L, userId = userId, type = TransactionType.CHARGE, amount = 2000L, timeMillis = 1234567910L)
         )
 
-        `when`(pointHistoryTable.selectAllByUserId(userId)).thenReturn(expectedHistories)
+        every { pointHistoryTable.selectAllByUserId(userId) } returns expectedHistories
 
         val result = pointService.getUserPointHistory(userId)
 
@@ -258,7 +254,7 @@ class PointUnitTest {
         assertThat(result[1].amount).isEqualTo(500L)
         assertThat(result[2].type).isEqualTo(TransactionType.CHARGE)
         assertThat(result[2].amount).isEqualTo(2000L)
-        verify(pointHistoryTable, times(1)).selectAllByUserId(userId)
+        verify(exactly = 1) { pointHistoryTable.selectAllByUserId(userId) }
     }
 
     @Test
@@ -266,11 +262,11 @@ class PointUnitTest {
         val nonExistentUserId = 999L
         val expectedHistories = emptyList<PointHistory>()
 
-        `when`(pointHistoryTable.selectAllByUserId(nonExistentUserId)).thenReturn(expectedHistories)
+        every { pointHistoryTable.selectAllByUserId(nonExistentUserId) } returns expectedHistories
 
         val result = pointService.getUserPointHistory(nonExistentUserId)
 
         assertThat(result).isEmpty()
-        verify(pointHistoryTable, times(1)).selectAllByUserId(nonExistentUserId)
+        verify(exactly = 1) { pointHistoryTable.selectAllByUserId(nonExistentUserId) }
     }
 }
