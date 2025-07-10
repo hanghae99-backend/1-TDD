@@ -18,7 +18,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.params.provider.CsvSource
 import io.mockk.*
 
-class PointUnitTest {
+class PointServiceUnitTest {
 
     private val userPointTable = mockk<UserPointTable>()
     private val pointHistoryTable = mockk<PointHistoryTable>()
